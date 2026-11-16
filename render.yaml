@@ -16,11 +16,11 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: INITIAL_ADMIN_PASSWORD
-        sync: false
+        generateValue: true
       - key: INITIAL_DISPATCHER_PASSWORD
-        sync: false
+        generateValue: true
       - key: INITIAL_DRIVER_PASSWORD
-        sync: false
+        generateValue: true
 
 databases:
   - name: emergency-response-db

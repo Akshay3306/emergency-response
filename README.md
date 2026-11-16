@@ -26,6 +26,6 @@ Run the focused checks with `npm test`.
 
 ## Deploy to Render
 
-The `render.yaml` Blueprint defines a free web service and free PostgreSQL database. Push this project to a GitHub repository named `emergency-response`, then create a new Blueprint from that repository in Render. Set unique values when Render prompts for the three `INITIAL_*_PASSWORD` secrets; do not commit them. Render generates `SESSION_SECRET` and connects the database automatically.
+The `render.yaml` Blueprint defines a free web service and free PostgreSQL database. Push this project to a GitHub repository named `emergency-response`, then create a new Blueprint from that repository in Render. Render generates `SESSION_SECRET` and unique initial staff passwords, and connects the database automatically. Save the generated staff passwords securely from the web service's Environment settings; they are used only when the staff records are first created.
 
 Free hosting is intended for demonstration and may sleep or have database limits/expiration. Back up or export any data you need to keep. Use managed, monitored infrastructure and a security review before any real-world deployment.
