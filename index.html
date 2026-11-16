@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111a2b">
+  <title>Relay — Emergency Response Operations</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #788297;
+      --line: #e8ebf0;
+      --paper: #fff;
+      --canvas: #f5f6f8;
+      --nav: #111a2b;
+      --nav-soft: #1d293d;
+      --red: #e84448;
+      --red-soft: #fff0ef;
+      --green: #238567;
+      --green-soft: #eaf6f1;
+      --amber: #bf7a17;
+      --amber-soft: #fff5e6;
+      --blue: #4775d1;
+      --blue-soft: #eef3ff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--canvas); color: var(--ink); }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; z-index: 3; display: flex; width: 246px; flex-direction: column;
+      padding: 27px 16px 18px; background: var(--nav); color: #d3dae6;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 12px 30px; color: white; }
+    .brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: var(--red); }
+    .brand-mark svg { width: 20px; height: 20px; }
+    .brand-name { font-size: 19px; font-weight: 750; letter-spacing: -.7px; }
+    .brand-sub { margin-top: 2px; color: #8995a8; font-size: 10px; letter-spacing: 1.15px; text-transform: uppercase; }
+    .nav-label { padding: 0 12px 10px; color: #737f93; font-size: 10px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; }
+    .nav-list { display: grid; gap: 4px; }
+    .nav-item { display: flex; width: 100%; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: #aeb8c8; text-align: left; font-size: 13px; font-weight: 550; transition: .15s ease; }
+    .nav-item:hover { background: #1a2639; color: #fff; }
+    .nav-item.active { background: #243248; color: #fff; box-shadow: inset 3px 0 var(--red); }
+    .nav-icon { display: grid; width: 18px; place-items: center; color: #9eacc0; font-size: 16px; }
+    .nav-item.active .nav-icon { color: #ff7778; }
+    .nav-count { margin-left: auto; padding: 2px 7px; border-radius: 10px; background: #df4449; color: white; font-size: 10px; font-weight: 700; }
+    .sidebar-spacer { flex: 1; }
+    .dispatch-note { margin: 0 4px 16px; padding: 13px; border: 1px solid #29364b; border-radius: 10px; background: #19253a; }
+    .dispatch-note-title { display: flex; align-items: center; gap: 7px; color: #e7ebf2; font-size: 11px; font-weight: 650; }
+    .pulse { width: 7px; height: 7px; border-radius: 50%; background: #45bf88; box-shadow: 0 0 0 4px #45bf8822; }
+    .dispatch-note p { margin: 8px 0 0; color: #94a0b3; font-size: 10px; line-height: 1.6; }
+    .profile { display: flex; align-items: center; gap: 10px; padding: 14px 8px 0; border-top: 1px solid #293447; }
+    .avatar { display: grid; width: 33px; height: 33px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #34445d; color: #e8eef8; font-size: 11px; font-weight: 700; }
+    .profile-info { min-width: 0; }
+    .profile-name { color: #e8edf5; font-size: 11px; font-weight: 650; }
+    .profile-role { margin-top: 2px; color: #8d99ad; font-size: 10px; }
+    .shell { width: calc(100% - 246px); min-width: 0; margin-left: 246px; }
+    .topbar { position: sticky; top: 0; z-index: 2; display: flex; height: 68px; align-items: center; justify-content: space-between; padding: 0 34px; border-bottom: 1px solid var(--line); background: #ffffffed; backdrop-filter: blur(12px); }
+    .breadcrumb { color: var(--muted); font-size: 12px; }
+    .breadcrumb strong { color: var(--ink); font-weight: 650; }
+    .top-actions { display: flex; align-items: center; gap: 15px; }
+    .live-pill { display: flex; align-items: center; gap: 7px; color: #596679; font-size: 11px; font-weight: 600; }
+    .live-pill .pulse { width: 6px; height: 6px; }
+    .content { width: min(1380px, 100%); margin: 0 auto; padding: 30px 34px 46px; }
+    .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+    h1 { margin: 0; font-size: 23px; font-weight: 740; letter-spacing: -.7px; }
+    .page-subtitle { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+    .heading-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+    .button { display: inline-flex; min-height: 37px; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: white; color: #354056; font-size: 11px; font-weight: 650; transition: .15s ease; }
+    .button:hover { border-color: #c9cfda; background: #fafbfc; }
+    .button.primary { border-color: var(--red); background: var(--red); color: white; }
+    .button.primary:hover { border-color: #cf383d; background: #cf383d; }
+    .button.dark { border-color: #263248; background: #263248; color: white; }
+    .button.small { min-height: 29px; padding: 0 9px; font-size: 10px; }
+    .button:disabled { cursor: not-allowed; opacity: .48; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin-bottom: 18px; }
+    .metric, .panel { border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+    .metric { padding: 16px 17px 14px; }
+    .metric-top { display: flex; align-items: center; justify-content: space-between; }
+    .metric-label { color: #778196; font-size: 10px; font-weight: 650; letter-spacing: .45px; text-transform: uppercase; }
+    .metric-icon { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 8px; font-size: 14px; }
+    .metric-icon.red { background: var(--red-soft); color: var(--red); }
+    .metric-icon.green { background: var(--green-soft); color: var(--green); }
+    .metric-icon.blue { background: var(--blue-soft); color: var(--blue); }
+    .metric-icon.amber { background: var(--amber-soft); color: var(--amber); }
+    .metric-value { margin-top: 11px; font-size: 26px; font-weight: 750; letter-spacing: -.9px; }
+    .metric-foot { display: flex; align-items: center; gap: 5px; margin-top: 5px; color: #8a93a3; font-size: 10px; }
+    .metric-foot .good { color: var(--green); font-weight: 650; }
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .92fr); gap: 15px; align-items: stretch; margin-bottom: 16px; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 17px; border-bottom: 1px solid #edf0f3; }
+    .panel-title { margin: 0; font-size: 12px; font-weight: 700; }
+    .panel-hint { margin-top: 4px; color: var(--muted); font-size: 10px; }
+    .text-action { padding: 5px; border: 0; background: transparent; color: #536fa9; font-size: 10px; font-weight: 650; }
+    .map-wrap { position: relative; min-height: 268px; overflow: hidden; background: #eaf0ee; }
+    .map-wrap svg { display: block; width: 100%; height: 100%; min-height: 268px; overflow: hidden; }
+    .map-legend { position: absolute; right: 12px; bottom: 11px; display: flex; gap: 11px; padding: 8px 10px; border: 1px solid #e8ebed; border-radius: 6px; background: #ffffffed; color: #667185; font-size: 9px; }
+    .legend-dot { display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: var(--red); }
+    .legend-dot.green { background: var(--green); }
+    .legend-dot.blue { background: var(--blue); }
+    .incident-list { display: grid; }
+    .incident { display: flex; min-width: 0; align-items: flex-start; gap: 10px; padding: 13px 15px; border-bottom: 1px solid #eff1f4; }
+    .incident:last-child { border-bottom: 0; }
+    .incident-mark { width: 7px; height: 7px; flex: 0 0 auto; margin-top: 4px; border-radius: 50%; background: var(--red); }
+    .incident-mark.amber { background: #e9a43c; }
+    .incident-mark.blue { background: #6587d7; }
+    .incident-body { min-width: 0; flex: 1; }
+    .incident-title { overflow: hidden; color: #283247; font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .incident-meta { margin-top: 4px; color: #8b95a5; font-size: 9px; }
+    .incident-time { color: #8791a0; font-size: 9px; white-space: nowrap; }
+    .table-panel { overflow: hidden; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 10px 14px; background: #fafbfc; color: #838d9d; font-size: 9px; font-weight: 700; letter-spacing: .45px; text-transform: uppercase; white-space: nowrap; }
+    td { padding: 12px 14px; border-top: 1px solid #f0f2f5; color: #4b566b; font-size: 10px; white-space: nowrap; }
+    .cell-main { color: #293348; font-size: 10px; font-weight: 650; }
+    .cell-sub { margin-top: 3px; color: #929aaa; font-size: 9px; }
+    .status { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 12px; background: #f1f3f6; color: #606b7c; font-size: 9px; font-weight: 650; }
+    .status:before { width: 5px; height: 5px; border-radius: 50%; background: currentColor; content: ""; }
+    .status.requested { background: #fff3e0; color: #bc791e; }
+    .status.dispatched, .status.en-route { background: #edf2ff; color: #5474c4; }
+    .status.pickup { background: #fff0e6; color: #c86d2b; }
+    .status.completed, .status.available, .status.on-duty { background: #eaf6f1; color: #238567; }
+    .status.on-scene, .status.off-duty, .status.maintenance { background: #f1f3f6; color: #758095; }
+    .status.busy { background: #fff0ef; color: #d44b4d; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+    .search { min-width: 210px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; outline: 0; background: white; color: var(--ink); font-size: 11px; }
+    .search:focus, input:focus, select:focus, textarea:focus { border-color: #9aabd0; outline: 3px solid #597dd11a; }
+    .filter-select { padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: white; color: #58647a; font-size: 10px; }
+    .empty-state { padding: 34px 18px; color: var(--muted); text-align: center; font-size: 11px; }
+    .fleet-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+    .fleet-card { padding: 15px; }
+    .fleet-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+    .vehicle-icon { display: grid; width: 37px; height: 37px; place-items: center; border-radius: 10px; background: #f0f3f7; font-size: 18px; }
+    .fleet-id { margin-top: 13px; color: #293348; font-size: 14px; font-weight: 730; }
+    .fleet-kind { margin-top: 4px; color: #8791a2; font-size: 10px; }
+    .fleet-detail { display: flex; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 11px; border-top: 1px solid #eff1f4; color: #69758a; font-size: 10px; }
+    .fleet-detail strong { color: #384359; font-weight: 650; }
+    .report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .report-card { padding: 17px; }
+    .report-card-top { display: flex; align-items: flex-start; justify-content: space-between; }
+    .report-tag { color: #8490a2; font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
+    .report-title { margin-top: 6px; color: #293348; font-size: 14px; font-weight: 700; }
+    .report-value { margin-top: 18px; font-size: 27px; font-weight: 750; letter-spacing: -1px; }
+    .report-desc { margin-top: 4px; color: #8993a3; font-size: 10px; }
+    .bars { display: flex; height: 50px; align-items: flex-end; gap: 7px; margin-top: 14px; }
+    .bar { flex: 1; min-height: 7px; border-radius: 3px 3px 0 0; background: #f4a1a1; }
+    .bar:nth-child(2n) { background: #ef6c6d; }
+    .bar:nth-child(3n) { background: #e7b0ae; }
+    .driver-stats { display: flex; gap: 9px; margin-bottom: 16px; }
+    .mini-stat { flex: 1; padding: 13px 15px; border: 1px solid var(--line); border-radius: 9px; background: white; }
+    .mini-stat strong { display: block; font-size: 19px; }
+    .mini-stat span { display: block; margin-top: 4px; color: #8791a2; font-size: 9px; }
+    .overlay { position: fixed; inset: 0; z-index: 5; display: none; align-items: center; justify-content: center; padding: 18px; background: #0e1626a8; }
+    .overlay.open { display: flex; }
+    .modal { width: min(620px, 100%); max-height: 94vh; overflow-y: auto; border-radius: 13px; background: white; box-shadow: 0 20px 70px #0003; }
+    .modal-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 22px 15px; border-bottom: 1px solid var(--line); }
+    .modal-head h2 { margin: 0; font-size: 17px; letter-spacing: -.4px; }
+    .modal-head p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+    .close-button { width: 29px; height: 29px; border: 0; border-radius: 7px; background: #f3f5f7; color: #657187; font-size: 18px; }
+    .form { padding: 18px 22px 22px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px 12px; }
+    .field { display: grid; gap: 6px; }
+    .field.full { grid-column: 1/-1; }
+    .field label { color: #59657a; font-size: 10px; font-weight: 650; }
+    .field input, .field select, .field textarea { width: 100%; min-height: 36px; padding: 9px 10px; border: 1px solid #e1e5eb; border-radius: 6px; background: white; color: #354056; font-size: 11px; }
+    .field textarea { min-height: 65px; resize: vertical; }
+    .form-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; padding-top: 15px; border-top: 1px solid #edf0f3; }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 7; padding: 12px 16px; transform: translateY(12px); border-radius: 8px; background: #17253a; color: white; font-size: 11px; opacity: 0; pointer-events: none; transition: .2s ease; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .role-banner { margin-bottom: 15px; padding: 11px 14px; border: 1px solid #dfe7fb; border-radius: 8px; background: #f2f5ff; color: #526687; font-size: 10px; }
+    .screen-reader { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+    .app[hidden], .login-screen[hidden] { display: none; }
+    .login-screen { display: grid; min-height: 100vh; grid-template-columns: minmax(0, 1fr) minmax(390px, .82fr); background: white; }
+    .login-story { position: relative; display: flex; min-height: 100vh; flex-direction: column; overflow: hidden; padding: 34px clamp(28px, 6vw, 88px); background: var(--nav); color: white; }
+    .login-story:before, .login-story:after { position: absolute; right: -170px; bottom: -240px; width: 520px; height: 520px; border: 1px solid #ffffff12; border-radius: 50%; content: ""; }
+    .login-story:after { right: -90px; bottom: -160px; width: 360px; height: 360px; }
+    .login-brand { position: relative; z-index: 1; display: flex; align-items: center; gap: 11px; }
+    .login-brand .brand-name { font-size: 20px; }
+    .login-hero { position: relative; z-index: 1; width: min(540px, 100%); margin: auto 0; padding: 70px 0; }
+    .login-eyebrow { display: flex; align-items: center; gap: 9px; color: #ff9392; font-size: 10px; font-weight: 750; letter-spacing: 1.4px; text-transform: uppercase; }
+    .login-eyebrow .pulse { background: #ff7778; box-shadow: 0 0 0 5px #ff777822; }
+    .login-hero h1 { max-width: 470px; margin-top: 21px; color: white; font-size: clamp(36px, 4vw, 55px); letter-spacing: -2px; line-height: 1.07; }
+    .login-hero p { max-width: 440px; margin: 16px 0 0; color: #aab5c5; font-size: 13px; line-height: 1.8; }
+    .login-stats { display: flex; gap: 38px; margin-top: 37px; }
+    .login-stat strong { display: block; color: #fff; font-size: 21px; letter-spacing: -.5px; }
+    .login-stat span { display: block; margin-top: 5px; color: #96a3b6; font-size: 9px; }
+    .login-story-footer { position: relative; z-index: 1; color: #78869c; font-size: 9px; }
+    .login-side { display: grid; min-height: 100vh; place-items: center; padding: 35px; }
+    .login-form-wrap { width: min(390px, 100%); }
+    .login-form-wrap h2 { margin: 0; color: #1c2638; font-size: 25px; letter-spacing: -.8px; }
+    .login-intro { margin: 8px 0 24px; color: #7e899b; font-size: 11px; line-height: 1.6; }
+    .login-form { display: grid; gap: 14px; }
+    .login-form .field { gap: 7px; }
+    .login-form .field label { color: #475268; font-size: 10px; }
+    .login-form .field input, .login-form .field select { min-height: 42px; border-color: #e0e5ec; border-radius: 7px; font-size: 11px; }
+    .login-form .button { min-height: 42px; margin-top: 2px; border-radius: 7px; font-size: 11px; }
+    .login-error { margin: -5px 0 0; color: #c5373c; font-size: 10px; }
+    .login-security-note { display: flex; gap: 9px; margin-top: 16px; padding: 11px 12px; border: 1px solid #e8edf5; border-radius: 7px; background: #f8faff; color: #718099; font-size: 9px; line-height: 1.55; }
+    .login-security-note strong { color: #4a5871; }
+    .login-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0 15px; color: #a0a8b5; font-size: 9px; }
+    .login-divider:before, .login-divider:after { height: 1px; flex: 1; background: #e9edf2; content: ""; }
+    .requester-entry { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 12px 13px; border: 1px solid #e5e9ef; border-radius: 7px; background: white; color: #344158; text-align: left; }
+    .requester-entry:hover { border-color: #bac6d8; background: #fafbfd; }
+    .requester-entry strong { display: block; font-size: 10px; }
+    .requester-entry span { display: block; margin-top: 4px; color: #8993a3; font-size: 9px; }
+    .requester-entry .arrow { color: #62779e; font-size: 16px; }
+    .sign-out { margin-left: auto; padding: 6px; border: 0; border-radius: 6px; background: transparent; color: #96a2b5; font-size: 15px; }
+    .sign-out:hover { background: #25334a; color: white; }
+    .role-chip { padding: 8px 11px; border: 1px solid var(--line); border-radius: 7px; background: white; color: #475268; font-size: 10px; font-weight: 650; }
+    .nav-item[hidden], .nav-label[hidden], nav[hidden], .dispatch-note[hidden] { display: none; }
+
+    @media (max-width: 1050px) {
+      .sidebar { width: 210px; }
+      .shell { width: calc(100% - 210px); margin-left: 210px; }
+      .content { padding-right: 22px; padding-left: 22px; }
+      .topbar { padding-right: 22px; padding-left: 22px; }
+      .fleet-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      .login-screen { grid-template-columns: 1fr; }
+      .login-story { min-height: 0; padding: 22px 23px 26px; }
+      .login-hero { padding: 40px 0 20px; }
+      .login-hero h1 { max-width: 460px; font-size: 38px; }
+      .login-hero p { margin-top: 10px; font-size: 11px; }
+      .login-stats { gap: 24px; margin-top: 20px; }
+      .login-stat strong { font-size: 17px; }
+      .login-story-footer { display: none; }
+      .login-side { min-height: 0; padding: 30px 23px 42px; }
+    }
+    @media (max-width: 760px) {
+      .sidebar { position: sticky; top: 0; width: 62px; height: 100vh; align-items: center; padding: 17px 7px; }
+      .brand { padding: 0 0 24px; }
+      .brand-name, .brand-sub, .nav-label, .nav-item > span:not(.nav-icon), .dispatch-note, .profile-info { display: none; }
+      .nav-list { width: 100%; }
+      .nav-item { justify-content: center; padding: 11px 5px; }
+      .nav-icon { width: auto; font-size: 18px; }
+      .nav-count { position: absolute; margin: -20px 0 0 22px; padding: 1px 4px; font-size: 8px; }
+      .profile { width: 100%; justify-content: center; padding: 14px 0 0; }
+      .shell { width: calc(100% - 62px); margin-left: 0; }
+      .topbar { height: 58px; padding: 0 14px; }
+      .content { padding: 22px 14px 34px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .metric { padding: 13px; }
+      .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+      .dashboard-grid > .panel { min-width: 0; }
+      .panel-head { flex-wrap: wrap; }
+      .panel-head > div { min-width: 0; }
+      .page-heading { flex-direction: column; }
+      .fleet-grid { grid-template-columns: 1fr; }
+      .report-grid { grid-template-columns: 1fr; }
+      .live-pill { display: none; }
+      .search { min-width: 0; flex: 1; }
+    }
+    @media (max-width: 430px) {
+      h1 { font-size: 20px; }
+      .top-actions { gap: 7px; }
+      .role-chip { max-width: 136px; padding: 8px; overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .driver-stats { display: grid; grid-template-columns: 1fr 1fr; }
+      .metric-value { font-size: 23px; }
+    }
+  </style>
+</head>
+<body>
+  <section class="login-screen" id="login-screen">
+    <div class="login-story">
+      <div class="login-brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7V3Z" fill="white"/></svg>
+        </div>
+        <div><div class="brand-name">relay</div><div class="brand-sub">Emergency response</div></div>
+      </div>
+      <div class="login-hero">
+        <div class="login-eyebrow"><span class="pulse"></span> Response coordination</div>
+        <h1>Every second.<br>Every response.</h1>
+        <p>One connected view for dispatch teams, ambulance crews, and the people who need help.</p>
+        <div class="login-stats">
+          <div class="login-stat"><strong>24 / 7</strong><span>Network coverage</span></div>
+          <div class="login-stat"><strong>Coordinated</strong><span>Response teams</span></div>
+          <div class="login-stat"><strong>One team</strong><span>Connected care</span></div>
+        </div>
+      </div>
+      <div class="login-story-footer">Demo environment · Locations and dispatch activity are simulated</div>
+    </div>
+    <div class="login-side">
+      <div class="login-form-wrap">
+        <h2>Welcome back</h2>
+        <p class="login-intro">Sign in to your emergency response workspace.</p>
+        <form class="login-form" id="login-form">
+          <div class="field">
+            <label for="login-role">Your role</label>
+            <select id="login-role" name="role" required>
+              <option>Dispatcher</option>
+              <option>Admin</option>
+              <option>Ambulance Driver</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="login-id">Employee ID</label>
+            <input id="login-id" name="employeeId" type="text" autocomplete="username" required placeholder="Enter your employee ID">
+          </div>
+          <div class="field">
+            <label for="login-password">Password</label>
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
+          </div>
+          <button type="submit" class="button primary">Sign in to Relay&nbsp; →</button>
+          <p class="login-error" id="login-error" role="alert" hidden>Employee ID or password is incorrect for the selected role.</p>
+        </form>
+        <div class="login-security-note"><span aria-hidden="true">ⓘ</span><span><strong>Demo environment.</strong> Staff credentials are verified by the server, and access is restricted by role. This system does not contact emergency services.</span></div>
+        <div class="login-divider">OR</div>
+        <button type="button" class="requester-entry" id="requester-entry">
+          <span><strong>Request emergency assistance</strong><span>Public requester access · No login required</span></span><span class="arrow" aria-hidden="true">→</span>
+        </button>
+      </div>
+    </div>
+  </section>
+  <div class="app" id="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7V3Z" fill="white"/></svg>
+        </div>
+        <div><div class="brand-name">relay</div><div class="brand-sub">Emergency response</div></div>
+      </div>
+      <div class="nav-label" id="operations-label">Operations</div>
+      <nav class="nav-list" id="operations-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-page="overview"><span class="nav-icon">▦</span><span>Overview</span></button>
+        <button class="nav-item" data-page="dispatch"><span class="nav-icon">⌖</span><span>Live dispatch</span><span class="nav-count" id="active-count">0</span></button>
+        <button class="nav-item" data-page="requests"><span class="nav-icon">＋</span><span>Emergency requests</span></button>
+        <button class="nav-item" data-page="ambulances"><span class="nav-icon">▰</span><span>Ambulances</span></button>
+        <button class="nav-item" data-page="drivers"><span class="nav-icon">♙</span><span id="drivers-nav-label">Drivers</span></button>
+        <button class="nav-item" data-page="requester"><span class="nav-icon">♡</span><span>Requester portal</span></button>
+      </nav>
+      <div style="height:25px"></div>
+      <div class="nav-label" id="management-label">Management</div>
+      <nav class="nav-list" id="management-nav" aria-label="Management navigation">
+        <button class="nav-item" data-page="reports"><span class="nav-icon">▤</span><span>Reports &amp; insights</span></button>
+        <button class="nav-item" data-page="admin"><span class="nav-icon">⚙</span><span>Administration</span></button>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="dispatch-note" id="dispatch-note">
+        <div class="dispatch-note-title"><span class="pulse"></span> Demo simulation</div>
+        <p>Sample locations and dispatch activity only. No live services are connected.</p>
+      </div>
+      <div class="profile">
+        <div class="avatar" id="profile-avatar">AM</div>
+        <div class="profile-info"><div class="profile-name" id="profile-name">Alex Morgan</div><div class="profile-role" id="profile-role">Operations team</div></div>
+        <button class="sign-out" id="sign-out" type="button" aria-label="Sign out" title="Sign out">↪</button>
+      </div>
+    </aside>
+    <main class="shell">
+      <header class="topbar">
+        <div class="breadcrumb">Operations <span style="padding:0 6px;color:#c1c7d0">/</span> <strong id="crumb">Overview</strong></div>
+        <div class="top-actions">
+          <div class="live-pill"><span class="pulse"></span> Demo system</div>
+          <div class="role-chip" id="header-role">Dispatcher</div>
+        </div>
+      </header>
+      <section class="content" id="content" aria-live="polite"></section>
+    </main>
+  </div>
+  <div class="overlay" id="request-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <div class="modal-head">
+        <div><h2 id="modal-title">Create emergency request</h2><p>Share the details so the nearest response team can help.</p></div>
+        <button class="close-button" data-close-modal aria-label="Close dialog">×</button>
+      </div>
+      <form class="form" id="request-form">
+        <div class="form-grid">
+          <div class="field"><label for="contact-name">Contact name *</label><input id="contact-name" name="name" required placeholder="Full name"></div>
+          <div class="field"><label for="contact-phone">Phone number *</label><input id="contact-phone" name="phone" type="tel" required placeholder="+1 (555) 000-0000"></div>
+          <div class="field full"><label for="location">Incident location *</label><input id="location" name="location" required placeholder="Street address, area or landmark"></div>
+          <div class="field"><label for="emergency-type">Emergency type *</label><select id="emergency-type" name="type" required><option value="">Select type</option><option>Medical emergency</option><option>Road traffic accident</option><option>Cardiac event</option><option>Trauma / injury</option><option>Other emergency</option></select></div>
+          <div class="field"><label for="priority">Priority</label><select id="priority" name="priority"><option>Critical</option><option selected>High</option><option>Standard</option></select></div>
+          <div class="field full"><label for="notes">Additional information</label><textarea id="notes" name="notes" placeholder="Patient condition, access instructions, or other helpful details"></textarea></div>
+        </div>
+        <div class="form-footer"><button type="button" class="button" data-close-modal>Cancel</button><button type="submit" class="button primary">Submit emergency request</button></div>
+      </form>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script>
+    const pages = {
+      overview: "Overview",
+      dispatch: "Live dispatch",
+      requests: "Emergency requests",
+      ambulances: "Ambulances",
+      drivers: "Drivers",
+      requester: "Requester portal",
+      reports: "Reports & insights",
+      admin: "Administration"
+    };
+    const rolePages = {
+      "Admin": Object.keys(pages),
+      "Dispatcher": ["overview", "dispatch", "requests", "ambulances", "drivers", "reports"],
+      "Ambulance Driver": ["drivers"],
+      "Requester": ["requester"]
+    };
+    const landingPages = {
+      "Admin": "admin",
+      "Dispatcher": "dispatch",
+      "Ambulance Driver": "drivers",
+      "Requester": "requester"
+    };
+    const roleInfo = {
+      "Dispatcher": { name: "Alex Morgan", initials: "AM", label: "Operations team" },
+      "Admin": { name: "Jordan Blake", initials: "JB", label: "System administrator" },
+      "Ambulance Driver": { name: "Marcus Lee", initials: "ML", label: "Driver · AMB-04" },
+      "Requester": { name: "Guest requester", initials: "GR", label: "Public access" }
+    };
+    let requests = [];
+    let ambulances = [];
+    let drivers = [];
+    let activePage = "overview";
+    let currentRole = "Dispatcher";
+    let currentUser = roleInfo.Dispatcher;
+    let filterText = "";
+    let statusFilter = "All statuses";
+    let toastTimer;
+    const content = document.getElementById("content");
+    const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+    async function api(path, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      if (options.body) headers["Content-Type"] = "application/json";
+      const response = await fetch(path, { credentials: "same-origin", ...options, headers });
+      let payload = {};
+      try {
+        payload = await response.json();
+      } catch {
+        if (response.ok) throw new Error("The server returned an invalid response.");
+      }
+      if (!response.ok) throw new Error((payload && payload.error) || `Request failed (${response.status}).`);
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+        throw new Error("The server returned an invalid response.");
+      }
+      return payload;
+    }
+    async function refreshState() {
+      const state = await api("/api/state");
+      requests = state.requests;
+      ambulances = state.ambulances;
+      drivers = state.drivers;
+    }
+    const activeRequests = () => requests.filter(item => item.status !== "Completed");
+    const availableUnits = () => ambulances.filter(unit => unit.status === "Available");
+    const canAccessPage = (role, page) => rolePages[role].includes(page);
+    const statusClass = status => status.toLowerCase().replace(/\s+/g, "-");
+    const badge = status => `<span class="status ${statusClass(status)}">${escapeHtml(status)}</span>`;
+    const requestRow = (item, showAction) => {
+      const action = showAction ? item.status === "Requested"
+        ? `<button class="button small dark" data-assign="${escapeHtml(item.id)}" ${availableUnits().length ? "" : "disabled"}>Assign unit</button>`
+        : item.status === "Completed" ? `<span style="color:#9aa2b0">—</span>` : `<button class="button small" data-advance="${escapeHtml(item.id)}">${nextAction(item.status)}</button>` : "";
+      return `<tr>
+        <td><div class="cell-main">${escapeHtml(item.id)}</div><div class="cell-sub">${escapeHtml(item.time)}</div></td>
+        <td><div class="cell-main">${escapeHtml(item.name)}</div><div class="cell-sub">${escapeHtml(item.phone)}</div></td>
+        <td>${escapeHtml(item.type)}<div class="cell-sub">${escapeHtml(item.location)}</div></td>
+        <td>${badge(item.priority)}</td><td>${badge(item.status)}</td>
+        <td>${item.vehicle ? `<div class="cell-main">${escapeHtml(item.vehicle)}</div><div class="cell-sub">${escapeHtml(item.driver)}</div>` : '<span style="color:#a1a8b5">Awaiting assignment</span>'}</td>
+        <td>${action}</td></tr>`;
+    };
+    function nextAction(status) {
+      return ({ "Dispatched": "Mark pickup", "Pickup": "En route", "En route": "Complete call" })[status] || "Update";
+    }
+    function heading(title, subtitle, actions = "") {
+      return `<div class="page-heading"><div><h1>${title}</h1><p class="page-subtitle">${subtitle}</p></div><div class="heading-actions">${actions}</div></div>`;
+    }
+    function metricsMarkup() {
+      const active = activeRequests().length;
+      const available = availableUnits().length;
+      const dispatched = requests.filter(item => ["Dispatched", "Pickup", "En route"].includes(item.status)).length;
+      return `<div class="metrics">
+        <article class="metric"><div class="metric-top"><span class="metric-label">Active emergencies</span><span class="metric-icon red">✚</span></div><div class="metric-value">${String(active).padStart(2, "0")}</div><div class="metric-foot"><span class="good">Demo</span><span>· ${dispatched} sample units responding</span></div></article>
+        <article class="metric"><div class="metric-top"><span class="metric-label">Units available</span><span class="metric-icon green">▰</span></div><div class="metric-value">${String(available).padStart(2, "0")}<span style="color:#a5adba;font-size:16px;font-weight:550"> / ${ambulances.length}</span></div><div class="metric-foot"><span class="good">${Math.round(available / ambulances.length * 100)}%</span><span>fleet readiness</span></div></article>
+        <article class="metric"><div class="metric-top"><span class="metric-label">Avg. response time</span><span class="metric-icon blue">◷</span></div><div class="metric-value">6.8<span style="font-size:15px;font-weight:550"> min</span></div><div class="metric-foot"><span class="good">↓ 12%</span><span>vs. last 30 days</span></div></article>
+        <article class="metric"><div class="metric-top"><span class="metric-label">Calls today</span><span class="metric-icon amber">▤</span></div><div class="metric-value">28</div><div class="metric-foot"><span>Across 3 response zones</span></div></article>
+      </div>`;
+    }
+    function mapMarkup(compact = false) {
+      const markers = [
+        { x: 25, y: 38, color: "#e84448" }, { x: 63, y: 27, color: "#e84448" }, { x: 77, y: 69, color: "#4775d1" },
+        { x: 39, y: 72, color: "#238567" }, { x: 53, y: 50, color: "#238567" }, { x: 83, y: 38, color: "#238567" }
+      ];
+      return `<div class="map-wrap" style="${compact ? "min-height:190px" : ""}">
+        <svg viewBox="0 0 760 310" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Simulated city map showing emergency calls, ambulances, and response routes">
+          <rect width="760" height="310" fill="#eaf0ee"/>
+          <path d="M-20 84 190 34l110 34 170-46 172 49 146-24M-10 252l174-37 124 43 138-35 157 27 188-47M135-18l29 105-37 91 33 151M376-10l20 105-35 104 48 129M594-10l-31 93 47 93-20 147" fill="none" stroke="#fff" stroke-width="15"/>
+          <path d="M-20 84 190 34l110 34 170-46 172 49 146-24M-10 252l174-37 124 43 138-35 157 27 188-47M135-18l29 105-37 91 33 151M376-10l20 105-35 104 48 129M594-10l-31 93 47 93-20 147" fill="none" stroke="#d7dfdc" stroke-width="1.4"/>
+          <path d="m193 32 92 94 105-29 92 44-31 77-113 40-94-41 22-97" fill="none" stroke="#f08e8d" stroke-width="3" stroke-dasharray="7 6"/>
+          <path d="m403 85 61-20 63 17-28 58-69 4" fill="none" stroke="#90acd9" stroke-width="3" stroke-dasharray="7 6"/>
+          <g fill="#c1d9c8" opacity=".8"><path d="M54 129h49v38H54z"/><path d="M242 186h42v27h-42z"/><path d="M518 202h60v34h-60z"/><path d="M630 101h40v28h-40z"/><path d="M318 18h34v23h-34z"/></g>
+          <g fill="#78877f" font-family="system-ui,sans-serif" font-size="9" letter-spacing=".8"><text x="179" y="126">MIDTOWN</text><text x="489" y="105">NORTH DISTRICT</text><text x="300" y="263">WEST END</text><text x="593" y="260">EAST DISTRICT</text></g>
+          <g fill="#89958c" font-family="system-ui,sans-serif" font-size="8"><text x="173" y="53">WAVERLY PL</text><text x="434" y="196">PINE STREET</text><text x="578" y="155">HARBOR RD</text></g>
+          ${markers.map((point, index) => `<g transform="translate(${point.x * 7.6} ${point.y * 3.1})"><circle r="12" fill="${point.color}" opacity=".16"/><circle r="6.5" fill="${point.color}" stroke="white" stroke-width="2"/><text x="0" y="3" text-anchor="middle" fill="white" font-size="6" font-family="system-ui,sans-serif" font-weight="700">${index < 2 ? "!" : index === 2 ? "A" : "+"}</text></g>`).join("")}
+        </svg>
+        <div class="map-legend"><span><i class="legend-dot"></i>Emergency</span><span><i class="legend-dot blue"></i>En route</span><span><i class="legend-dot green"></i>Available</span></div>
+      </div>`;
+    }
+    function recentIncidents() {
+      return `<div class="incident-list">${requests.slice(0, 4).map((item, index) => `<div class="incident"><span class="incident-mark ${index === 1 ? "amber" : index === 2 ? "blue" : ""}"></span><div class="incident-body"><div class="incident-title">${escapeHtml(item.type)} · ${escapeHtml(item.name)}</div><div class="incident-meta">${escapeHtml(item.location)}</div></div><div class="incident-time">${escapeHtml(item.time)}</div></div>`).join("")}</div>`;
+    }
+    function tableMarkup(rows, showAction = true) {
+      return `<div class="table-scroll"><table><thead><tr><th>Request ID</th><th>Caller</th><th>Emergency / location</th><th>Priority</th><th>Status</th><th>Assigned unit</th><th>${showAction ? "Action" : "Response"}</th></tr></thead><tbody>${rows.length ? rows.map(item => requestRow(item, showAction)).join("") : `<tr><td colspan="7"><div class="empty-state">No emergency requests match these filters.</div></td></tr>`}</tbody></table></div>`;
+    }
+    function requestToolbar() {
+      return `<div class="toolbar"><input class="search" id="request-search" type="search" placeholder="Search caller, ID or location…" value="${escapeHtml(filterText)}" aria-label="Search emergency requests"><select class="filter-select" id="status-filter" aria-label="Filter by status">${["All statuses", "Requested", "Dispatched", "Pickup", "En route", "Completed"].map(item => `<option ${statusFilter === item ? "selected" : ""}>${item}</option>`).join("")}</select></div>`;
+    }
+    function visibleRequests() {
+      return requests.filter(item => {
+        const query = filterText.trim().toLowerCase();
+        return (!query || [item.id, item.name, item.location, item.type, item.phone].some(value => value.toLowerCase().includes(query)))
+          && (statusFilter === "All statuses" || item.status === statusFilter);
+      });
+    }
+    function renderOverview() {
+      return `${heading("Good morning, Alex", "Here’s what’s happening across your response network.", '<button class="button" data-page-link="reports">▤ &nbsp;View reports</button><button class="button primary" data-new-request>＋ &nbsp;New emergency</button>')}
+        ${metricsMarkup()}
+        <div class="dashboard-grid">
+          <section class="panel"><div class="panel-head"><div><h2 class="panel-title">Response network</h2><div class="panel-hint">Simulated overview · Central City</div></div><button class="text-action" data-page-link="dispatch">Open dispatch map&nbsp; ↗</button></div>${mapMarkup(true)}</section>
+          <section class="panel"><div class="panel-head"><div><h2 class="panel-title">Latest incidents</h2><div class="panel-hint">Recent emergency activity</div></div><button class="text-action" data-page-link="requests">View all</button></div>${recentIncidents()}</section>
+        </div>
+        <section class="panel table-panel"><div class="panel-head"><div><h2 class="panel-title">Active emergency requests</h2><div class="panel-hint">Track, assign, and update response status</div></div><button class="text-action" data-page-link="requests">All requests&nbsp; →</button></div>${tableMarkup(activeRequests().slice(0, 4))}</section>`;
+    }
+    function renderDispatch() {
+      const active = activeRequests();
+      return `${heading("Live dispatch", "Coordinate active calls and available response units.", '<button class="button primary" data-new-request>＋ &nbsp;Create request</button>')}
+        ${metricsMarkup()}
+        <section class="panel" style="margin-bottom:15px"><div class="panel-head"><div><h2 class="panel-title">City response map</h2><div class="panel-hint">Simulated unit locations and routes · Demo positions</div></div><span class="status available">Simulated positions</span></div>${mapMarkup()}</section>
+        <section class="panel table-panel"><div class="panel-head"><div><h2 class="panel-title">Dispatch queue</h2><div class="panel-hint">${active.length} active calls · ${availableUnits().length} units ready for assignment</div></div>${requestToolbar()}</div>${tableMarkup(visibleRequests())}</section>`;
+    }
+    function renderRequests() {
+      return `${heading("Emergency requests", "Review caller details, prioritize incidents, and coordinate care.", '<button class="button primary" data-new-request>＋ &nbsp;New emergency</button>')}
+        <section class="panel table-panel"><div class="panel-head"><div><h2 class="panel-title">All requests</h2><div class="panel-hint">${requests.length} total incidents · ${activeRequests().length} currently active</div></div>${requestToolbar()}</div>${tableMarkup(visibleRequests())}</section>`;
+    }
+    function renderAmbulances() {
+      return `${heading("Ambulance fleet", "Monitor vehicle readiness and response unit assignments.", '<button class="button" data-toast="Fleet status is up to date.">↻ &nbsp;Refresh fleet</button>')}
+        ${metricsMarkup()}
+        <div class="fleet-grid">${ambulances.map(unit => `<article class="panel fleet-card"><div class="fleet-top"><div class="vehicle-icon" aria-hidden="true">🚑</div>${badge(unit.status)}</div><div class="fleet-id">${escapeHtml(unit.id)}</div><div class="fleet-kind">${escapeHtml(unit.type)}</div><div class="fleet-detail"><span>Assigned driver</span><strong>${escapeHtml(unit.driver)}</strong></div><div class="fleet-detail" style="margin-top:0;padding-top:9px;border-top:0"><span>Station · equipment</span><strong>${escapeHtml(unit.station)} · ${escapeHtml(unit.equipment)}</strong></div></article>`).join("")}</div>`;
+    }
+    function renderDrivers() {
+      const isDriver = currentRole === "Ambulance Driver";
+      if (isDriver) {
+        const driver = drivers.find(item => item.name === currentUser.name);
+        const assignment = requests.find(item => driver && item.driver === driver.name && item.status !== "Completed");
+        return `${heading("My assignment", "Your shift details and assigned response only.")}
+          <section class="panel" style="margin-bottom:15px"><div class="panel-head"><div><h2 class="panel-title">Current call</h2><div class="panel-hint">${escapeHtml(driver ? `${driver.name} · ${driver.vehicle}` : "Driver profile")}</div></div>${assignment ? badge(assignment.status) : badge("Available")}</div>${assignment ? `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px"><div><div class="cell-main">${escapeHtml(assignment.id)} · ${escapeHtml(assignment.type)}</div><div class="cell-sub">${escapeHtml(assignment.location)} · Caller ${escapeHtml(assignment.name)}</div><div class="cell-sub" style="margin-top:5px">Estimated response: ${escapeHtml(assignment.eta || "8 min")}</div></div>${assignment.status !== "Requested" ? `<button class="button primary small" data-advance="${escapeHtml(assignment.id)}">${nextAction(assignment.status)}</button>` : '<span class="status requested">Awaiting dispatch assignment</span>'}</div>` : `<div class="empty-state">No active calls assigned. You’re ready for dispatch.</div>`}</section>
+          <div class="driver-stats"><div class="mini-stat"><strong>${escapeHtml(driver ? driver.shift : "—")}</strong><span>My shift</span></div><div class="mini-stat"><strong>${escapeHtml(driver ? driver.vehicle : "—")}</strong><span>My unit</span></div><div class="mini-stat"><strong>${driver ? driver.calls : 0}</strong><span>My calls today</span></div><div class="mini-stat"><strong>${escapeHtml(driver ? driver.response : "—")}</strong><span>My avg. response</span></div></div>`;
+      }
+      const totalCalls = drivers.reduce((sum, item) => sum + item.calls, 0);
+      return `${heading("Driver activity", "View shift coverage, assignments, and response performance.", '<button class="button" data-toast="Driver activity is up to date.">↻ &nbsp;Refresh activity</button>')}
+        <div class="driver-stats"><div class="mini-stat"><strong>${drivers.filter(item => item.status === "On duty").length}</strong><span>Drivers on duty</span></div><div class="mini-stat"><strong>${totalCalls}</strong><span>Calls handled today</span></div><div class="mini-stat"><strong>7.0 min</strong><span>Average response time</span></div><div class="mini-stat"><strong>94%</strong><span>Shift coverage</span></div></div>
+        <section class="panel table-panel"><div class="panel-head"><div><h2 class="panel-title">Driver roster</h2><div class="panel-hint">On-duty status and daily call activity</div></div></div><div class="table-scroll"><table><thead><tr><th>Driver</th><th>Shift</th><th>Status</th><th>Assigned unit</th><th>Calls today</th><th>Avg. response</th></tr></thead><tbody>${drivers.map(driver => `<tr><td><div style="display:flex;align-items:center;gap:8px"><span class="avatar" style="width:28px;height:28px;background:#edf1f8;color:#53617a">${escapeHtml(driver.initials)}</span><span class="cell-main">${escapeHtml(driver.name)}</span></div></td><td>${escapeHtml(driver.shift)}</td><td>${badge(driver.status)}</td><td>${escapeHtml(driver.vehicle)}</td><td>${driver.calls}</td><td>${escapeHtml(driver.response)}</td></tr>`).join("")}</tbody></table></div></section>`;
+    }
+    function renderRequester() {
+      return `${heading("Request emergency assistance", "If someone is in immediate danger, call your local emergency number.", "")}
+        <div class="role-banner"><strong>Emergency?</strong> This demonstration records a simulated request only. It does not contact emergency services or dispatch a real ambulance.</div>
+        <section class="panel" style="max-width:700px"><div class="panel-head"><div><h2 class="panel-title">Tell us what’s happening</h2><div class="panel-hint">Share your location and contact details so a dispatcher can respond.</div></div></div>
+          <form class="form" id="requester-form"><div class="form-grid">
+            <div class="field"><label for="portal-name">Your name *</label><input id="portal-name" name="name" required placeholder="Full name"></div>
+            <div class="field"><label for="portal-phone">Phone number *</label><input id="portal-phone" name="phone" type="tel" required placeholder="Number we can reach you at"></div>
+            <div class="field full"><label for="portal-location">Where do you need help? *</label><input id="portal-location" name="location" required placeholder="Address, intersection, or landmark"></div>
+            <div class="field"><label for="portal-type">What happened? *</label><select id="portal-type" name="type" required><option value="">Select emergency type</option><option>Medical emergency</option><option>Road traffic accident</option><option>Cardiac event</option><option>Trauma / injury</option><option>Other emergency</option></select></div>
+            <div class="field"><label for="portal-priority">Urgency</label><select id="portal-priority" name="priority"><option>Critical</option><option selected>High</option><option>Standard</option></select></div>
+            <div class="field full"><label for="portal-notes">Anything else we should know?</label><textarea id="portal-notes" name="notes" placeholder="Describe the situation or how responders can reach you"></textarea></div>
+          </div><div class="form-footer"><button class="button primary" type="submit">Submit simulated request&nbsp; →</button></div></form>
+        </section>`;
+    }
+    function reportCard(tag, title, value, description, bars) {
+      return `<article class="panel report-card"><div class="report-card-top"><div><div class="report-tag">${tag}</div><div class="report-title">${title}</div></div><span class="metric-icon ${tag === "Response time" ? "blue" : tag === "Fleet" ? "green" : "red"}">▤</span></div><div class="report-value">${value}</div><div class="report-desc">${description}</div><div class="bars" aria-label="Recent reporting trend">${bars.map(height => `<span class="bar" style="height:${height}%"></span>`).join("")}</div></article>`;
+    }
+    function renderReports() {
+      const completeCount = requests.filter(item => item.status === "Completed").length;
+      return `${heading("Reports & insights", "A clear picture of response performance and operational readiness.", '<button class="button" data-toast="Report summary prepared for this demo.">↓ &nbsp;Export summary</button>')}
+        <div class="role-banner">Reporting period: <strong>Today</strong> &nbsp;·&nbsp; Demo data shown for operational planning</div>
+        <div class="report-grid">
+          ${reportCard("Emergency requests", "Emergency Request Report", String(requests.length), `${activeRequests().length} active · ${completeCount} completed today`, [34,52,43,70,48,82,61,92,68,76,55,88])}
+          ${reportCard("Fleet", "Ambulance Utilization Report", `${Math.round((ambulances.length - availableUnits().length) / ambulances.length * 100)}%`, `${ambulances.length - availableUnits().length} of ${ambulances.length} ambulances assigned or unavailable`, [68,44,63,78,58,87,72,65,91,72,81,75])}
+          ${reportCard("Response time", "Response Time Report", "6.8 min", "Average arrival time · 12% faster than prior period", [82,72,78,57,65,48,59,39,51,33,40,28])}
+          ${reportCard("Driver activity", "Driver Activity Report", `${drivers.filter(driver => driver.status === "On duty").length} drivers`, `${drivers.reduce((sum, driver) => sum + driver.calls, 0)} calls handled across today’s shifts`, [36,58,42,72,64,52,85,68,78,93,76,87])}
+        </div>
+        <section class="panel table-panel" style="margin-top:15px"><div class="panel-head"><div><h2 class="panel-title">Recent activity</h2><div class="panel-hint">Emergency requests included in the current reporting period</div></div></div>${tableMarkup(requests, false)}</section>`;
+    }
+    function renderAdmin() {
+      const roles = [
+        ["Admin", "Full system configuration, user management, and reporting", "System access"],
+        ["Dispatcher", "Manage emergency requests, fleet assignments, response status, and reports", "Operations"],
+        ["Ambulance Driver", "View only your assigned call and update its response status", "Field response"],
+        ["Requester", "Submit an emergency request; no access to operations data", "Public portal"]
+      ];
+      return `${heading("Administration", "Manage access, response coverage, and system configuration.", '<button class="button" data-toast="System settings are saved for this demo.">Save settings</button>')}
+        <section class="panel" style="margin-bottom:15px"><div class="panel-head"><div><h2 class="panel-title">User roles &amp; permissions</h2><div class="panel-hint">Role-based access across the response network</div></div></div><div class="table-scroll"><table><thead><tr><th>Role</th><th>Permissions</th><th>Access group</th></tr></thead><tbody>${roles.map(role => `<tr><td class="cell-main">${role[0]}</td><td>${role[1]}</td><td>${badge(role[2])}</td></tr>`).join("")}</tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2 class="panel-title">Dispatch coverage</h2><div class="panel-hint">Operating hours and response area</div></div><span class="status available">Operational</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;padding:18px"><div><div class="metric-label">Service area</div><div class="cell-main" style="margin-top:7px">Central City · 3 zones</div></div><div><div class="metric-label">Dispatch hours</div><div class="cell-main" style="margin-top:7px">24 hours · 7 days</div></div><div><div class="metric-label">Fleet size</div><div class="cell-main" style="margin-top:7px">${ambulances.length} response units</div></div><div><div class="metric-label">Last system sync</div><div class="cell-main" style="margin-top:7px">Just now</div></div></div></section>`;
+    }
+    function render() {
+      const renderers = { overview: renderOverview, dispatch: renderDispatch, requests: renderRequests, ambulances: renderAmbulances, drivers: renderDrivers, requester: renderRequester, reports: renderReports, admin: renderAdmin };
+      if (!canAccessPage(currentRole, activePage)) activePage = landingPages[currentRole];
+      document.getElementById("crumb").textContent = pages[activePage];
+      const requesterOnly = currentRole === "Requester";
+      const canManage = rolePages[currentRole].some(page => ["reports", "admin"].includes(page));
+      document.getElementById("operations-label").hidden = requesterOnly;
+      document.getElementById("management-label").hidden = !canManage;
+      document.getElementById("management-nav").hidden = !canManage;
+      document.getElementById("dispatch-note").hidden = requesterOnly;
+      document.getElementById("drivers-nav-label").textContent = currentRole === "Ambulance Driver" ? "My assignment" : "Drivers";
+      document.querySelectorAll(".nav-item").forEach(button => {
+        button.hidden = !canAccessPage(currentRole, button.dataset.page);
+        button.classList.toggle("active", button.dataset.page === activePage);
+      });
+      document.getElementById("active-count").textContent = activeRequests().length;
+      content.innerHTML = renderers[activePage]();
+    }
+    async function enterWorkspace(role, user = roleInfo[role]) {
+      await refreshState();
+      const info = user || roleInfo[role];
+      currentRole = role;
+      currentUser = info;
+      document.getElementById("header-role").textContent = role;
+      document.getElementById("profile-name").textContent = info.name || role;
+      document.getElementById("profile-role").textContent = info.label || role;
+      document.getElementById("profile-avatar").textContent = info.initials || role.slice(0, 2).toUpperCase();
+      activePage = landingPages[role];
+      document.getElementById("login-screen").hidden = true;
+      document.getElementById("app-shell").hidden = false;
+      render();
+    }
+    async function leaveWorkspace() {
+      if (currentRole !== "Requester") {
+        try {
+          await api("/api/auth/logout", { method: "POST" });
+        } catch (error) {
+          notify(error.message);
+          return;
+        }
+      }
+      document.getElementById("app-shell").hidden = true;
+      document.getElementById("login-screen").hidden = false;
+      document.getElementById("login-form").reset();
+      document.getElementById("login-error").hidden = true;
+      requests = [];
+      ambulances = [];
+      drivers = [];
+      currentRole = "Dispatcher";
+      currentUser = roleInfo.Dispatcher;
+      document.getElementById("login-role").focus();
+    }
+    function showLoginError(message) {
+      const error = document.getElementById("login-error");
+      error.textContent = message;
+      error.hidden = false;
+    }
+    function notify(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 2600);
+    }
+    function openRequestModal() {
+      if (!["Admin", "Dispatcher"].includes(currentRole)) return;
+      const modal = document.getElementById("request-modal");
+      modal.classList.add("open");
+      document.getElementById("contact-name").focus();
+    }
+    function closeRequestModal() {
+      document.getElementById("request-modal").classList.remove("open");
+    }
+    async function addRequest(form) {
+      if (!["Admin", "Dispatcher", "Requester"].includes(currentRole)) {
+        notify("Your role cannot create emergency requests.");
+        return;
+      }
+      const values = new FormData(form);
+      const body = Object.fromEntries(values.entries());
+      try {
+        const result = await api("/api/requests", { method: "POST", body: JSON.stringify(body) });
+        await refreshState();
+        activePage = currentRole === "Requester" ? "requester" : "requests";
+        filterText = "";
+        statusFilter = "All statuses";
+        render();
+        notify(`Request ${result.id} added to the dispatch queue.`);
+        return true;
+      } catch (error) {
+        notify(error.message);
+        return false;
+      }
+    }
+    async function assignRequest(id) {
+      if (!["Admin", "Dispatcher"].includes(currentRole)) {
+        notify("Your role cannot assign ambulance units.");
+        return;
+      }
+      const request = requests.find(item => item.id === id);
+      try {
+        const result = await api(`/api/requests/${encodeURIComponent(id)}/assign`, { method: "POST" });
+        await refreshState();
+        render();
+        notify(`${result.vehicle} assigned to ${request ? request.id : id}.`);
+      } catch (error) {
+        notify(error.message);
+      }
+    }
+    async function advanceRequest(id) {
+      const request = requests.find(item => item.id === id);
+      if (!request) return;
+      const canUpdate = ["Admin", "Dispatcher"].includes(currentRole)
+        || (currentRole === "Ambulance Driver" && request.driver === currentUser.driverName);
+      if (!canUpdate) {
+        notify("You can only update your own assigned call.");
+        return;
+      }
+      try {
+        const result = await api(`/api/requests/${encodeURIComponent(id)}/status`, { method: "PATCH" });
+        await refreshState();
+        render();
+        notify(`${result.id} updated: ${result.status}.`);
+      } catch (error) {
+        notify(error.message);
+      }
+    }
+    document.addEventListener("click", event => {
+      const target = event.target.closest("button");
+      if (!target) return;
+      if (target.dataset.page) {
+        if (!canAccessPage(currentRole, target.dataset.page)) return;
+        activePage = target.dataset.page;
+        filterText = "";
+        statusFilter = "All statuses";
+        render();
+      }
+      if (target.dataset.pageLink) {
+        if (!canAccessPage(currentRole, target.dataset.pageLink)) return;
+        activePage = target.dataset.pageLink;
+        render();
+      }
+      if (target.hasAttribute("data-new-request") && ["Admin", "Dispatcher"].includes(currentRole)) openRequestModal();
+      if (target.hasAttribute("data-close-modal")) closeRequestModal();
+      if (target.dataset.assign) assignRequest(target.dataset.assign);
+      if (target.dataset.advance) advanceRequest(target.dataset.advance);
+      if (target.dataset.toast) notify(target.dataset.toast);
+    });
+    document.getElementById("request-modal").addEventListener("click", event => {
+      if (event.target.id === "request-modal") closeRequestModal();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeRequestModal();
+    });
+    document.addEventListener("submit", async event => {
+      if (event.target.id === "login-form") {
+        event.preventDefault();
+        const values = new FormData(event.target);
+        const error = document.getElementById("login-error");
+        error.hidden = true;
+        try {
+          const result = await api("/api/auth/login", {
+            method: "POST",
+            body: JSON.stringify({
+              role: values.get("role"),
+              employeeId: String(values.get("employeeId")).trim(),
+              password: values.get("password")
+            })
+          });
+          await enterWorkspace(result.user.role, result.user);
+          event.target.reset();
+        } catch (loginError) {
+          showLoginError(loginError.message);
+          document.getElementById("login-password").value = "";
+        }
+        return;
+      }
+      if (event.target.id === "request-form" || event.target.id === "requester-form") {
+        event.preventDefault();
+        const form = event.target;
+        const saved = await addRequest(form);
+        if (saved) {
+          form.reset();
+          closeRequestModal();
+        }
+      }
+    });
+    document.addEventListener("input", event => {
+      if (event.target.form && event.target.form.id === "login-form") {
+        document.getElementById("login-error").hidden = true;
+      }
+      if (event.target.id === "request-search") {
+        const start = event.target.selectionStart;
+        filterText = event.target.value;
+        render();
+        const search = document.getElementById("request-search");
+        search.focus();
+        search.setSelectionRange(start, start);
+      }
+    });
+    document.addEventListener("change", event => {
+      if (event.target.id === "status-filter") {
+        statusFilter = event.target.value;
+        render();
+      }
+    });
+    document.getElementById("requester-entry").addEventListener("click", async () => {
+      try {
+        await enterWorkspace("Requester");
+      } catch (error) {
+        showLoginError(error.message);
+      }
+    });
+    document.getElementById("sign-out").addEventListener("click", leaveWorkspace);
+    (async function restoreStaffSession() {
+      try {
+        const result = await api("/api/auth/session");
+        if (result.user) await enterWorkspace(result.user.role, result.user);
+      } catch (error) {
+        showLoginError(error.message);
+      }
+    })();
+  </script>
+</body>
+</html>

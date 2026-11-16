@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: emergency-response
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: emergency-response-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: INITIAL_ADMIN_PASSWORD
+        sync: false
+      - key: INITIAL_DISPATCHER_PASSWORD
+        sync: false
+      - key: INITIAL_DRIVER_PASSWORD
+        sync: false
+
+databases:
+  - name: emergency-response-db
+    databaseName: emergency_response
+    user: emergency_response
+    plan: free
